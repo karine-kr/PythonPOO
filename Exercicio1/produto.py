@@ -1,5 +1,3 @@
-import json
-
 class Produto:
 
     def __init__(self, id,  nome, quantidade,preco):
