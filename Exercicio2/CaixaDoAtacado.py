@@ -1,14 +1,67 @@
 class CaixaDoAtacado:
+    def __init__(self, cardapio):
+        self.cardapio = cardapio
 
-    CARDAPIO = {
-      1: {"nome": "Café 1kg", "preco": 53},
-      2: {"nome": "Sabão em pó", "preco": 36},
-      3: {"nome": "Caixa de Leite", "preco": 82},
-      4: {"nome": "Refrigerate", "preco": 8.50}
-    }
+    def computarCompra(self, compras:str) -> float:
+        try:
+            with open(compras, "r") as file:
+                linhas = [linha.strip() for linha in file if linha.strip()]
+        except FileNotFoundError: 
+                print("O arquivo não encontrado!")
+                return 0.0
 
-    @staticmethod
-    def desconto_quantidade(quantidade):
+        metodo_pagamento = linhas[0].lower()
+        itens_compra = linhas[1:]
+
+        print(f"\nMétodo de pagamento selecionado: {metodo_pagamento}\n")
+        
+        subtotal_geral = 0.0
+        total = 0
+
+        for linha in itens_compra:
+            partes = linha.split(",")
+            if len(partes) !=2:
+                print(f"Linha mal formatada: {linha}")
+                continue
+
+            id_str, qtd_str = partes
+            try:
+                id_produto  = int(id_str.strip())
+                quantidade = int (qtd_str.strip())
+            except ValueError:
+                 print(f"Valores inválidos na linha: {linha}")
+                 continue
+            
+            produto = self.cardapio.get(id_produto)
+            if not produto:
+                print(f"Produto com ID {id_produto} não encontrado no cardápio!!")
+                continue
+
+            preco_unitario = produto.preco
+            subtotal = preco_unitario * quantidade
+
+            percentual_desconto = self._desconto_quantidade(quantidade)
+            subtotal_com_desconto = subtotal * (1 - percentual_desconto)
+            subtotal_geral += subtotal_com_desconto
+            total += quantidade
+                
+            print(f"Produto: {produto.nome}")
+            print(f" Quantidade: {quantidade}")
+            print(f" Preço unitário: R${preco_unitario:.2f}")
+            print(f" Subtotal: R${subtotal:.2f}")
+            print(f" Desconto aplicado: {int(percentual_desconto*100)}%")
+            print(f" Subtotal somente com o desconto referente a quantidade de produto: R${subtotal_com_desconto:.2f}\n")
+
+        total_final = self._ajuste_pagamento(subtotal_geral, metodo_pagamento)
+
+        print(f"\nQuantidade total de itens: {total}")
+        print(f"Total com desconto somente da quantidade de produto: R${subtotal_geral:.2f}")
+        print(f"Total Final com os ajustes de pagamentos: R${total_final:.2f}")
+
+        return round(total_final, 2)
+              
+    def _desconto_quantidade(self, quantidade: int) -> float:
+        quantidade = int(quantidade)
         if 11 <= quantidade <=20:
             return 0.10
         elif 21 <= quantidade <=50:
@@ -17,67 +70,9 @@ class CaixaDoAtacado:
             return 0.25
         return 0.0
     
-    @staticmethod
-    def ajuste_pagamento(metodo):
-        ajustes = {
-            "debito": 1.00,
-            "dinheiro": 0.95,
-            "credito": 1.03
-        }
-        return ajustes.get(metodo.lower(), 1.00)
-    
-    def computarCompra(self, compras):
-        try:
-            with open(compras, "r") as file:
-                linhas = [linha.strip().replace(",", " ") for linha in file.readlines() if linha.strip()]
-
-            if not linhas: 
-                print("O arquivo está vazio!")
-                return None
-
-            metodo_pagamento = linhas[0].lower()
-            print(f"\nMétodo de pagamento selecionado: {metodo_pagamento}\n")
-
-            if metodo_pagamento not in ["debito", "dinheiro", "credito"]:
-                print("Método de pagamento inválido!")
-                return None
-            
-            itens_compra = [linha.split() for linha in linhas[1:]]
-
-            total = 0
-
-            for item in itens_compra:
-                if len(item) != 2:
-                    print(f"Formato inválido na linha: {item}")
-                    continue
-
-                try:
-                    id_produto, quantidade = int(item[0]), int(item[1])
-                except ValueError:
-                    print(f"Erro ao converter valores na linha: {item}")
-                    continue
-
-                if id_produto in self.CARDAPIO:
-                    produto = self.CARDAPIO[id_produto]                
-                    preco_unitario  = produto["preco"]
-                    subtotal = preco_unitario * quantidade
-                    desconto_qtd = self.desconto_quantidade(quantidade)
-                    subtotal *= (1 - desconto_qtd)
-
-                    print(f"Produto selecionado: {produto['nome']}, Quantidade: {quantidade}, Subtotal com desconto referente ao valor das unidades: {subtotal:.2f}")
-
-                    total += subtotal
-
-                else:
-                    print(f"Produto com ID {id_produto} não encontrado no cardápio!!")
-            
-            ajuste_pag = self.ajuste_pagamento(metodo_pagamento)
-            total *= ajuste_pag
-
-            print(f"\nTotal com ajustado levando em consideração as regras de pagamento ser débito, dinheiro ou crédito: {total:.2f}\n")
-
-            return round(total, 2)
-
-        except Exception as e:
-            print(f"Erro ao processar o arquivo: {e}")
-            return None
+    def _ajuste_pagamento(self, total, metodo_pagamento):
+        if metodo_pagamento == "dinheiro":
+            return total * 0.95
+        elif metodo_pagamento == "credito":
+            return total * 1.03
+        return total
